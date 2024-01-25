@@ -4,58 +4,74 @@ from pathlib import Path
 import mobase
 from PyQt6.QtCore import QDir, QFileInfo, QStandardPaths
 
+from ..basic_features import BasicModDataChecker, GlobPatterns
 from ..basic_game import BasicGame, BasicGameSaveGame
 from ..steam_utils import find_steam_path
 
 
-class DarkestDungeonModDataChecker(mobase.ModDataChecker):
-    def __init__(self):
-        super().__init__()
-        self.validDirNames = [
-            "activity_log",
-            "audio",
-            "campaign",
-            "colours",
-            "curios",
-            "cursors",
-            "dlc",
-            "dungeons",
-            "effects",
-            "fe_flow",
-            "fonts",
-            "fx",
-            "game_over",
-            "heroes",
-            "inventory",
-            "loading_screen",
-            "localization",
-            "loot",
-            "maps",
-            "modes",
-            "monsters",
-            "overlays",
-            "panels",
-            "props",
-            "raid",
-            "raid_result",
-            "scripts",
-            "scrolls",
-            "shaders",
-            "shared",
-            "trinkets",
-            "upgrades",
-            "video",
-        ]
+class DarkestDungeonModDataChecker(BasicModDataChecker):
+    def __init__(self, patterns: GlobPatterns = GlobPatterns()):
+        default_patterns = GlobPatterns(
+            valid=[
+                "activity_log",
+                "audio",
+                "campaign",
+                "colours",
+                "curios",
+                "cursors",
+                "dlc",
+                "dungeons",
+                "effects",
+                "fe_flow",
+                "fonts",
+                "fx",
+                "game_over",
+                "heroes",
+                "inventory",
+                "loading_screen",
+                "localization",
+                "loot",
+                "maps",
+                "modes",
+                "monsters",
+                "overlays",
+                "panels",
+                "props",
+                "raid",
+                "raid_result",
+                "scripts",
+                "scrolls",
+                "shaders",
+                "shared",
+                "trinkets",
+                "upgrades",
+                "video",
+            ],
+            delete=[
+                "modfiles.txt",
+                "project.xml",
+                "preview_icon.png",
+            ]
+        )
+        super().__init__(default_patterns.merge(patterns))
 
     def dataLooksValid(
         self, filetree: mobase.IFileTree
     ) -> mobase.ModDataChecker.CheckReturn:
+        status = mobase.ModDataChecker.INVALID
+        rp = self._regex_patterns
         for entry in filetree:
+            if (entry == None):
+                continue
+            name = entry.name().casefold()
+            if rp.delete.match(name):
+                entry.detach()
             if not entry.isDir():
                 continue
-            if entry.name().casefold() in self.validDirNames:
-                return mobase.ModDataChecker.VALID
-        return mobase.ModDataChecker.INVALID
+            if rp.valid.match(name):
+                if status is mobase.ModDataChecker.INVALID:
+                    status = mobase.ModDataChecker.VALID
+        return status
 
 
 class DarkestDungeonSaveGame(BasicGameSaveGame):
